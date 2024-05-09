@@ -1,4 +1,6 @@
 from parse_krpsim_file import parse_krpsim_file
+import logging
+import sys
 
 
 def can_schedule(process, current_resources):
@@ -10,25 +12,29 @@ def can_schedule(process, current_resources):
 
 def consume_resources(current_resources, process):
     for resource, quantity in process.needs.items():
-        print(f"Consuming {resource} {quantity}")
         try:
             current_resources[resource] -= quantity
+            logging.info(f"Consumed: {resource}: {quantity}")
         except KeyError:
             pass
 
 
 def produce_resources(current_resources, process):
     for resource, quantity in process.results.items():
-        print(f"Producing {resource} {quantity}")
         try:
             current_resources[resource] += quantity
+            logging.info(f"Produced: {resource}: {quantity}")
         except KeyError:
             current_resources[resource] = quantity
+            logging.info(f"Produced: {resource}: {quantity}")
 
 
 def update_resources(current_resources, process):
+    logging.info(f"process: {process.name}")
     consume_resources(current_resources, process)
     produce_resources(current_resources, process)
+    logging.info("Stock: %s", current_resources)
+    logging.info("-------------------")
 
 
 def parallel_schedule(stock, processes):
@@ -90,5 +96,21 @@ def parallel_schedule(stock, processes):
 
 
 if __name__ == "__main__":
-    stock, processes, optimize = parse_krpsim_file("resources/simple")
+
+    if len(sys.argv) > 1:
+        file_name = sys.argv[1]
+    else:
+        print("No file name provided as argument.")
+        sys.exit(1)
+
+    stock, processes, optimize = parse_krpsim_file(file_name)
+
+    # ログ機能を追加する
+    logging.basicConfig(
+        filename=file_name + ".log", level=logging.INFO, format="%(message)s"
+    )
+
+    logging.info("Stock: %s", stock.resources)
+    logging.info("-------------------")
+
     parallel_schedule(stock, processes)
