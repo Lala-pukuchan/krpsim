@@ -82,14 +82,14 @@ def parallel_schedule(stock, processes):
         executable_processes = [
             process for process in processes if can_schedule(process, current_resources)
         ]
-        executable_processes = [
-            process
-            for process in executable_processes
-            if all(
-                process.name != ongoing_process.name
-                for ongoing_process in ongoing_processes
-            )
-        ]
+        # executable_processes = [
+        #    process
+        #    for process in executable_processes
+        #    if all(
+        #        process.name != ongoing_process.name
+        #        for ongoing_process in ongoing_processes
+        #    )
+        # ]
 
     print(f"Final Stock: {current_resources}, Total Time: {time_elapsed}")
 
