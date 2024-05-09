@@ -4,3 +4,5 @@ class Process:
         self.needs = needs
         self.results = results
         self.delay = delay
+        self.start_time = 0
+        self.end_time = 0

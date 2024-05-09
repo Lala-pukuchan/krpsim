@@ -20,25 +20,22 @@ def parse_krpsim_file(file_path):
         if ":" in line:
             parts = line.split(":")
             if len(parts) == 2 and parts[1].isdigit():
-                # This is a stock entry
                 stock.add_resource(parts[0], int(parts[1]))
             else:
-                # Use regular expression to extract parts
                 match = re.match(r"(\w+):\(([^)]+)\):\(([^)]+)\):(\d+)", line)
                 if match:
                     name = match.group(1)
                     needs_part = match.group(2)
                     results_part = match.group(3)
-                    delay = match.group(4)
-
-                    # Convert needs and results from string to dictionary
+                    delay = int(match.group(4))
                     needs = dict(item.split(":") for item in needs_part.split(";"))
                     results = dict(item.split(":") for item in results_part.split(";"))
-
-                    # Append the process
+                    for key, value in needs.items():
+                        needs[key] = int(value)
+                    for key, value in results.items():
+                        results[key] = int(value)
                     processes.append(Process(name, needs, results, int(delay)))
                 elif line.startswith("optimize"):
-                    # Optimize entry
                     _, goals = line.split(":")
                     optimize = Optimize(goals.split(";"))
 
