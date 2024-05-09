@@ -3,6 +3,40 @@ import logging
 import sys
 
 
+def assign_priorities(processes, final_product, stock):
+
+    # ゴールから逆算して、優先度を割り当てる
+    def recursive_priority_assignment(current_process, current_priority, stock):
+        # 優先度を割り当てる
+        current_process.priority = current_priority
+
+        # 必要なものから、在庫を引いて、不足しているものを計算する
+        updated_needs = {
+            resource: quantity - stock.get(resource, 0)
+            for resource, quantity in current_process.needs.items()
+            if (quantity - stock.get(resource, 0)) > 0
+        }
+
+        # 各プロセスでループする
+        for precursor in processes:
+            if precursor == current_process:
+                continue
+            # 必要なものを生成できるプロセスに対して、高い優先度を割り当てる
+            if any(item in precursor.results for item in updated_needs):
+                recursive_priority_assignment(precursor, current_priority - 1, stock)
+
+    # 最終成果物を生成するプロセスを見つける
+    for process in processes:
+        if final_product in process.results:
+            recursive_priority_assignment(process, 10, stock)
+
+    # 優先度でプロセスをソートする
+    processes.sort(key=lambda x: x.priority, reverse=True)
+    print("Processes sorted by priority:")
+    for process in processes:
+        print(process.name, process.priority)
+
+
 def can_schedule(process, current_resources):
     return all(
         current_resources.get(resource, 0) >= quantity
@@ -82,14 +116,6 @@ def parallel_schedule(stock, processes):
         executable_processes = [
             process for process in processes if can_schedule(process, current_resources)
         ]
-        # executable_processes = [
-        #    process
-        #    for process in executable_processes
-        #    if all(
-        #        process.name != ongoing_process.name
-        #        for ongoing_process in ongoing_processes
-        #    )
-        # ]
 
     print(f"Final Stock: {current_resources}, Total Time: {time_elapsed}")
 
@@ -111,5 +137,4 @@ if __name__ == "__main__":
 
     logging.info("Stock: %s", stock.resources)
     logging.info("-------------------")
-
     parallel_schedule(stock, processes)

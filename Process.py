@@ -6,3 +6,4 @@ class Process:
         self.delay = delay
         self.start_time = 0
         self.end_time = 0
+        self.priority = 0
