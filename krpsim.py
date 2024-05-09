@@ -34,7 +34,6 @@ def update_resources(current_resources, process):
     consume_resources(current_resources, process)
     produce_resources(current_resources, process)
     logging.info("Stock: %s", current_resources)
-    logging.info("-------------------")
 
 
 def parallel_schedule(stock, processes):
@@ -55,6 +54,12 @@ def parallel_schedule(stock, processes):
                 # 時間を更新する
                 process.start_time = time_elapsed
                 process.end_time = time_elapsed + process.delay
+                logging.info(
+                    f"Executed: {process.name}, "
+                    f"Start Time: {process.start_time}, "
+                    f"End Time: {process.end_time}"
+                )
+                logging.info("-------------------")
 
                 # 現在実行中のプロセスに追加する
                 ongoing_processes.append(process)

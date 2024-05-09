@@ -1,5 +1,6 @@
 from parse_krpsim_file import parse_krpsim_file
 import sys
+import matplotlib.pyplot as plt
 
 
 def parse_log_file(file_path):
@@ -9,12 +10,24 @@ def parse_log_file(file_path):
     processes = []
     stocks = []
     current_process = {}
+    tasks = []
+    start_times = []
+    end_times = []
+    durations = []
 
     for line in lines:
         if line.startswith("process:"):
             if current_process:
                 processes.append(current_process)
             current_process = {"name": line.strip().split(": ")[1]}
+        elif line.startswith("Executed:"):
+            parts = line.strip().split(", ")
+            start_time = int(parts[1].split(": ")[1])
+            end_time = int(parts[2].split(": ")[1])
+            tasks.append(current_process.get("name"))
+            start_times.append(start_time)
+            end_times.append(end_time)
+            durations.append(end_time - start_time)
         elif line.startswith("Consumed:"):
             if current_process:
                 consumed = line.strip().split(": ")[1]
@@ -42,7 +55,7 @@ def parse_log_file(file_path):
     if current_process:
         processes.append(current_process)
 
-    return stocks, processes
+    return stocks, processes, tasks, start_times, end_times, durations
 
 
 def check_each_process(processes_log, processes):
@@ -82,35 +95,67 @@ def check_each_process(processes_log, processes):
                 exit(1)
 
 
-def check_each_stock(stocks_log, processes_log):
+def check_each_stock(stocks_log, processes_log, processes):
     current_stock = stocks_log[0]
     for i in range(1, len(stocks_log)):
-        print(f"Stock: {i-1}, {stocks_log[i-1]}")
-        print(f"current_stock: {current_stock}")
-        print(f"Process: {processes_log[i - 1]}")
-        print(i - 1)
-        print("----------------------------")
-        
-        consumed_item = processes_log[i - 1].get("consumed").get("resource")
-        produced_item = processes_log[i - 1].get("produced").get("resource")
-        if consumed_item in current_stock:
-            current_stock[consumed_item] -= int(
-                processes_log[i - 1].get("consumed").get("quantity")
-            )
-        if produced_item in current_stock:
-            current_stock[produced_item] += int(
-                processes_log[i - 1].get("produced").get("quantity")
-            )
-        else:
-            current_stock[produced_item] = int(
-                processes_log[i - 1].get("produced").get("quantity")
-            )
+        process_name = processes_log[i - 1].get("name")
+        for process in processes:
 
+            # 同一プロセスを実行
+            if process.name == process_name:
+                for item in process.needs:
+                    if item in current_stock:
+                        current_stock[item] -= int(process.needs[item])
+                for item in process.results:
+                    if item in current_stock:
+                        current_stock[item] += int(process.results[item])
+                    else:
+                        current_stock[item] = int(process.results[item])
+
+        # ログとの比較
         if current_stock != stocks_log[i]:
             print(f"Stocks are not correct at process {i}")
             print(f"Estimated Stock: {current_stock}")
             print(f"Stock Log      : {stocks_log[i]}")
             exit(1)
+
+
+def plot_processes(tasks, start_times, durations):
+    # Create a figure and an axes.
+    fig, ax = plt.subplots()
+
+    colors = [
+        "tab:blue",
+        "tab:orange",
+        "tab:green",
+        "tab:red",
+        "tab:purple",
+        "tab:brown",
+        "tab:pink",
+        "tab:gray",
+        "tab:olive",
+        "tab:cyan",
+    ]
+
+    # Plot each task as a bar.
+    for i, task in enumerate(tasks):
+        color = colors[i % len(colors)]
+        ax.broken_barh(
+            [(start_times[i], durations[i])], (i - 0.4, 0.8), facecolors=color
+        )
+
+    # Set labels and title
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Processes")
+    ax.set_title("Process Execution Timeline")
+    ax.set_yticks(range(len(tasks)))
+    ax.set_yticklabels(tasks)
+
+    # Show grid
+    ax.grid(True)
+
+    # Show the plot
+    plt.show()
 
 
 if __name__ == "__main__":
@@ -122,9 +167,15 @@ if __name__ == "__main__":
         print("python3 krpsim_verify.py <file_name> <log_file>")
         sys.exit(1)
 
-    stock, processes, optimize = parse_krpsim_file("resources/simple")
-
-    stocks_log, processes_log = parse_log_file(log_file)
-
+    # インプット用ファイルをパースする
+    stock, processes, optimize = parse_krpsim_file(file_name)
+    # ログファイルをパースする
+    stocks_log, processes_log, tasks, start_times, end_times, durations = (
+        parse_log_file(log_file)
+    )
+    # プロセス内容をチェックする
     check_each_process(processes_log, processes)
-    check_each_stock(stocks_log, processes_log)
+    # ストック内容をチェックする
+    check_each_stock(stocks_log, processes_log, processes)
+    # プロセスの実行時間をプロットする
+    plot_processes(tasks, start_times, durations)
