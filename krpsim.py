@@ -48,14 +48,10 @@ def parallel_schedule(stock, processes):
     # 現在実行中のプロセスがあるか、実行可能なプロセスがあるかを確認する
     while executable_processes or ongoing_processes:
         for process in executable_processes:
-            print(f"Executable: {process.name}")
             # その都度、次のプロセスが実行可能かどうかを確認する
             if can_schedule(process, current_resources):
                 # リソースを更新する
                 update_resources(current_resources, process)
-                print(
-                    f"Executed {process.name}, Time: {time_elapsed}, Stock: {current_resources}"
-                )
                 # 時間を更新する
                 process.start_time = time_elapsed
                 process.end_time = time_elapsed + process.delay
@@ -90,8 +86,6 @@ def parallel_schedule(stock, processes):
             )
         ]
 
-    print("ongoing_processes: ", ongoing_processes)
-    print("executable_processes: ", executable_processes)
     print(f"Final Stock: {current_resources}, Total Time: {time_elapsed}")
 
 
