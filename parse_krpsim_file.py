@@ -37,6 +37,7 @@ def parse_krpsim_file(file_path):
                     processes.append(Process(name, needs, results, int(delay)))
                 elif line.startswith("optimize"):
                     _, goals = line.split(":")
+                    goals = goals.strip("()")
                     optimize = Optimize(goals.split(";"))
 
     return stock, processes, optimize
