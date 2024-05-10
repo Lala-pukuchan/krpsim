@@ -33,9 +33,6 @@ def assign_priorities(processes, final_product, stock):
         if final_product in process.results:
             recursive_priority_assignment(process, 10, stock)
 
-    ## 優先度でプロセスをソートする
-    # processes.sort(key=lambda x: x.priority, reverse=True)
-
 
 def can_schedule(process, current_resources):
     return all(
@@ -95,13 +92,18 @@ def parallel_schedule(stock, processes):
                 )
 
                 ongoing_processes.append(process)
-                assign_priorities(processes, optimize.final_product, stock.resources)
                 if can_schedule(process, stock.resources) and process.priority > 0:
                     executable_processes.append(process)
                     produce_resources(stock.resources, process)
+                    assign_priorities(
+                        processes, optimize.final_product, stock.resources
+                    )
                     continue
                 else:
                     produce_resources(stock.resources, process)
+                    assign_priorities(
+                        processes, optimize.final_product, stock.resources
+                    )
             else:
                 print("How should I code here?")
         else:
@@ -113,6 +115,7 @@ def parallel_schedule(stock, processes):
             time_elapsed = max(
                 process.end_time for process in ongoing_processes if process.end_time
             )
+            print("I feel it should be considered from min time to max time.")
 
             if len(executable_processes) == 0:
                 break
