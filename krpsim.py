@@ -17,7 +17,7 @@ def assign_priorities(
 
         # 無限ループ回避
         i += 1
-        if i > 3:
+        if i > 5:
             return
 
         # 原材料を含むプロセスにボーナスを付与する
@@ -175,6 +175,7 @@ def parallel_schedule(stock, processes):
                 )
                 logging.info("==================")
                 logging.info(f"Time Elapsed: {time_elapsed}")
+                logging.info(f"Stock: {stock.resources}")
                 logging.info("==================")
                 if time_elapsed <= estimated_max_end_time:
                     continue
