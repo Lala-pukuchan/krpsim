@@ -4,8 +4,9 @@ import sys
 from collections import deque
 
 
-def assign_priorities(processes, final_product, stock):
+def assign_priorities(ongoing_processes, processes, final_product, stock):
 
+    # プロセスの優先度をリセットする
     for process in processes:
         process.priority = 0
 
@@ -13,6 +14,7 @@ def assign_priorities(processes, final_product, stock):
     def recursive_priority_assignment(current_process, current_priority, stock):
         # 優先度を割り当てる
         current_process.priority = current_priority
+        print(stock)
         # 在庫に必要材料が既にある場合は、優先度を下げる
         updated_needs = {
             resource: quantity - stock.get(resource, 0)
@@ -28,10 +30,16 @@ def assign_priorities(processes, final_product, stock):
             if any(item in precursor.results for item in updated_needs):
                 recursive_priority_assignment(precursor, current_priority - 1, stock)
 
+    # 実行中のプロセスを考慮して、在庫を推定する
+    copied_stock = stock.copy()
+    estimated_stock = stock.copy()
+    for ongoing_process in ongoing_processes:
+        estimated_stock = produce_resources(copied_stock, ongoing_process)
+
     # 最終成果物を生成するプロセスを見つける
     for process in processes:
         if final_product in process.results:
-            recursive_priority_assignment(process, 10, stock)
+            recursive_priority_assignment(process, 10, estimated_stock)
 
 
 def can_schedule(process, current_resources):
@@ -42,6 +50,7 @@ def can_schedule(process, current_resources):
 
 
 def consume_resources(current_resources, process):
+    logging.info("-------------------")
     for resource, quantity in process.needs.items():
         try:
             current_resources[resource] -= quantity
@@ -50,21 +59,19 @@ def consume_resources(current_resources, process):
             pass
 
 
+def print_produced_resources(process):
+    for resource, quantity in process.results.items():
+        logging.info("-------------------")
+        logging.info(f"Produced: {resource}: {quantity}")
+
+
 def produce_resources(current_resources, process):
     for resource, quantity in process.results.items():
         try:
             current_resources[resource] += quantity
-            logging.info(f"Produced: {resource}: {quantity}")
         except KeyError:
             current_resources[resource] = quantity
-            logging.info(f"Produced: {resource}: {quantity}")
-
-
-def update_resources(current_resources, process):
-    logging.info(f"process: {process.name}")
-    consume_resources(current_resources, process)
-    produce_resources(current_resources, process)
-    logging.info("Stock: %s", current_resources)
+    return current_resources
 
 
 def parallel_schedule(stock, processes):
@@ -76,12 +83,40 @@ def parallel_schedule(stock, processes):
     ongoing_processes = []
     time_elapsed = 0
 
+    logging.info("==================")
+    logging.info(f"Time Elapsed: {time_elapsed}")
+    logging.info("==================")
+
     while True:
+
+        if len(ongoing_processes) > 0:
+            for ongoing_process in ongoing_processes:
+                if ongoing_process.end_time == time_elapsed:
+                    produce_resources(stock.resources, ongoing_process)
+
+                    print_produced_resources(ongoing_process)
+                    ongoing_processes.remove(ongoing_process)
+
+        assign_priorities(
+            ongoing_processes,
+            processes,
+            optimize.final_product,
+            stock.resources,
+        )
+
         if len(executable_processes) > 0:
             process = executable_processes.popleft()
+
             if can_schedule(process, stock.resources) and process.priority > 0:
 
                 consume_resources(stock.resources, process)
+                assign_priorities(
+                    ongoing_processes,
+                    processes,
+                    optimize.final_product,
+                    stock.resources,
+                )
+
                 process.start_time = time_elapsed
                 process.end_time = time_elapsed + process.delay
 
@@ -94,85 +129,30 @@ def parallel_schedule(stock, processes):
                 ongoing_processes.append(process)
                 if can_schedule(process, stock.resources) and process.priority > 0:
                     executable_processes.append(process)
-                    produce_resources(stock.resources, process)
-                    assign_priorities(
-                        processes, optimize.final_product, stock.resources
-                    )
-                    continue
-                else:
-                    produce_resources(stock.resources, process)
-                    assign_priorities(
-                        processes, optimize.final_product, stock.resources
-                    )
-            else:
-                print("How should I code here?")
         else:
+            if len(ongoing_processes) > 0:
+                time_elapsed = min(
+                    process.end_time
+                    for process in ongoing_processes
+                    if process.end_time
+                )
+                estimated_max_end_time = max(
+                    process.end_time
+                    for process in ongoing_processes
+                    if process.end_time
+                )
+                logging.info("==================")
+                logging.info(f"Time Elapsed: {time_elapsed}")
+                logging.info("==================")
+                if time_elapsed <= estimated_max_end_time:
+                    continue
             executable_processes = deque(
                 process
                 for process in processes
                 if can_schedule(process, stock.resources) and process.priority > 0
             )
-            time_elapsed = max(
-                process.end_time for process in ongoing_processes if process.end_time
-            )
-            print("I feel it should be considered from min time to max time.")
-
             if len(executable_processes) == 0:
                 break
-
-
-# def parallel_schedule(stock, processes):
-#    current_resources = stock.resources.copy()
-#    executable_processes = [
-#        process for process in processes if can_schedule(process, current_resources)
-#    ]
-#    ongoing_processes = []
-#    time_elapsed = 0
-
-#    # 現在実行中のプロセスがあるか、実行可能なプロセスがあるかを確認する
-#    while executable_processes or ongoing_processes:
-#        for process in executable_processes:
-#            # その都度、次のプロセスが実行可能かどうかを確認する
-#            if can_schedule(process, current_resources) and process.priority > 0:
-#                # リソースを更新する
-#                update_resources(current_resources, process)
-#                # 時間を更新する
-#                process.start_time = time_elapsed
-#                process.end_time = time_elapsed + process.delay
-#                logging.info(
-#                    f"Executed: {process.name}, "
-#                    f"Start Time: {process.start_time}, "
-#                    f"End Time: {process.end_time}"
-#                )
-#                logging.info("-------------------")
-
-#                # 現在実行中のプロセスに追加する
-#                ongoing_processes.append(process)
-
-#        # 実行中のプロセスが無ければ、終了する
-#        if not ongoing_processes:
-#            break
-
-#        # 実行中のプロセスがあれば、時間を進める
-#        eariest_end_time = min(
-#            process.end_time for process in ongoing_processes if process.end_time
-#        )
-#        time_elapsed = eariest_end_time
-
-#        # 実行中のプロセスが終了したら、実行中のプロセスから削除する
-#        ongoing_processes = [
-#            process for process in ongoing_processes if process.end_time != time_elapsed
-#        ]
-#        # 実行可能なプロセスを更新する
-#        executable_processes = [
-#            process for process in processes if can_schedule(process, current_resources)
-#        ]
-#        # 更新済みリソースで優先順位を更新する
-#        if optimize.final_product:
-#            assign_priorities(processes, optimize.final_product, current_resources)
-
-
-# print(f"Final Stock: {current_resources}, Total Time: {time_elapsed}")
 
 
 if __name__ == "__main__":
@@ -187,7 +167,10 @@ if __name__ == "__main__":
 
     # 最終成果物が指定されている場合、優先度を割り当て、優先度の高い順にプロセスをソートする
     if optimize.final_product:
-        assign_priorities(processes, optimize.final_product, stock.resources)
+        ongoing_processes = []
+        assign_priorities(
+            ongoing_processes, processes, optimize.final_product, stock.resources
+        )
         processes.sort(key=lambda x: x.priority, reverse=True)
 
     # ログ機能を追加する
