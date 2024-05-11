@@ -4,16 +4,37 @@ import sys
 from collections import deque
 
 
-def assign_priorities(ongoing_processes, processes, final_product, stock):
+def assign_priorities(
+    ongoing_processes, processes, final_product, stock, raw_materials
+):
 
     # プロセスの優先度をリセットする
     for process in processes:
         process.priority = 0
 
     # ゴールから逆算して、優先度を割り当てる
-    def recursive_priority_assignment(current_process, current_priority, stock):
+    def recursive_priority_assignment(i, current_process, current_priority, stock):
+
+        # 無限ループ回避
+        i += 1
+        if i > 3:
+            return
+
+        # 原材料を含むプロセスにボーナスを付与する
+        bonus = False
+        if current_priority == 10:
+            for raw in raw_materials:
+                if raw not in current_process.needs:
+                    bonus = False
+                    break
+                bonus = True
+
         # 優先度を割り当てる
-        current_process.priority = current_priority
+        if bonus:
+            current_process.priority = current_priority + 1
+        else:
+            current_process.priority = current_priority
+
         # 在庫に必要材料が既にある場合は、優先度を下げる
         updated_needs = {
             resource: quantity - stock.get(resource, 0)
@@ -27,7 +48,7 @@ def assign_priorities(ongoing_processes, processes, final_product, stock):
                 continue
             # 必要なものを生成できるプロセスに対して、高い優先度を割り当てる
             if any(item in precursor.results for item in updated_needs):
-                recursive_priority_assignment(precursor, current_priority - 1, stock)
+                recursive_priority_assignment(i, precursor, current_priority - 1, stock)
 
     # 実行中のプロセスを考慮して、在庫を推定する
     copied_stock = stock.copy()
@@ -38,7 +59,9 @@ def assign_priorities(ongoing_processes, processes, final_product, stock):
     # 最終成果物を生成するプロセスを見つける
     for process in processes:
         if final_product in process.results:
-            recursive_priority_assignment(process, 10, estimated_stock)
+            recursive_priority_assignment(0, process, 10, estimated_stock)
+
+    processes.sort(key=lambda x: (x.priority, sum(x.results.values())), reverse=True)
 
 
 def can_schedule(process, current_resources):
@@ -104,7 +127,13 @@ def parallel_schedule(stock, processes):
             processes,
             optimize.final_product,
             stock.resources,
+            stock.raw_materials,
         )
+        executable_processes = list(executable_processes)
+        executable_processes.sort(
+            key=lambda x: (x.priority, sum(x.results.values())), reverse=True
+        )
+        executable_processes = deque(executable_processes)
 
         if len(executable_processes) > 0:
             process = executable_processes.popleft()
@@ -117,6 +146,7 @@ def parallel_schedule(stock, processes):
                     processes,
                     optimize.final_product,
                     stock.resources,
+                    stock.raw_materials,
                 )
 
                 process.start_time = time_elapsed
@@ -172,9 +202,12 @@ if __name__ == "__main__":
     if optimize.final_product:
         ongoing_processes = []
         assign_priorities(
-            ongoing_processes, processes, optimize.final_product, stock.resources
+            ongoing_processes,
+            processes,
+            optimize.final_product,
+            stock.resources,
+            stock.raw_materials,
         )
-        processes.sort(key=lambda x: x.priority, reverse=True)
 
     # ログ機能を追加する
     logging.basicConfig(

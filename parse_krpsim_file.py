@@ -21,6 +21,7 @@ def parse_krpsim_file(file_path):
             parts = line.split(":")
             if len(parts) == 2 and parts[1].isdigit():
                 stock.add_resource(parts[0], int(parts[1]))
+                stock.add_raw_material(parts[0])
             else:
                 match = re.match(r"(\w+):\(([^)]+)\):\(([^)]+)\):(\d+)", line)
                 if match:
