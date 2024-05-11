@@ -1,6 +1,7 @@
 from parse_krpsim_file import parse_krpsim_file
 import sys
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 
 def parse_log_file(file_path):
@@ -138,8 +139,30 @@ if __name__ == "__main__":
         ax.set_title("Processes Time")
         ax.set_xlabel("Time")
         ax.set_ylabel("Processes")
+
+        # Generate a color map from a set of colors
+        colors = list(mcolors.TABLEAU_COLORS)
+        color_map = {}
+        process_count = {}
+        unique_process_index = 0
+
         for process in processes_time:
-            ax.barh(process["name"], process["end_time"] - process["start_time"], left=process["start_time"])
+            base_name = process["name"]
+            if base_name not in color_map:
+                # Assign a color to each unique process name
+                color_map[base_name] = colors[unique_process_index % len(colors)]
+                unique_process_index += 1
+
+            # Count occurrences to make each bar unique
+            if base_name in process_count:
+                process_count[base_name] += 1
+            else:
+                process_count[base_name] = 1
+
+            unique_name = f"{base_name} ({process_count[base_name]})"
+            # Use the mapped color for the process
+            ax.barh(unique_name, process["end_time"] - process["start_time"], left=process["start_time"], color=color_map[base_name])
+
         plt.tight_layout()
         plt.show()
 
