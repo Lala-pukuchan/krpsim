@@ -154,6 +154,7 @@ def parallel_schedule(stock, processes):
                 if can_schedule(process, stock.resources) and process.priority > 0
             )
             if len(executable_processes) == 0:
+                print("End Time: ", time_elapsed)
                 break
 
 
@@ -183,3 +184,4 @@ if __name__ == "__main__":
     logging.info("Initial Stock: %s", stock.resources)
     parallel_schedule(stock, processes)
     logging.info("Final Stock: %s", stock.resources)
+    print("Final Stock: ", stock.resources)
