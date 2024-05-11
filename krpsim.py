@@ -14,7 +14,6 @@ def assign_priorities(ongoing_processes, processes, final_product, stock):
     def recursive_priority_assignment(current_process, current_priority, stock):
         # 優先度を割り当てる
         current_process.priority = current_priority
-        print(stock)
         # 在庫に必要材料が既にある場合は、優先度を下げる
         updated_needs = {
             resource: quantity - stock.get(resource, 0)
@@ -54,7 +53,7 @@ def consume_resources(current_resources, process):
     for resource, quantity in process.needs.items():
         try:
             current_resources[resource] -= quantity
-            logging.info(f"Consumed: {resource}: {quantity}")
+            logging.info(f"(Consumed by {process.name}) {resource}: {quantity}")
         except KeyError:
             pass
 
@@ -62,7 +61,7 @@ def consume_resources(current_resources, process):
 def print_produced_resources(process):
     for resource, quantity in process.results.items():
         logging.info("-------------------")
-        logging.info(f"Produced: {resource}: {quantity}")
+        logging.info(f"(Produced by {process.name}) {resource}: {quantity}")
 
 
 def produce_resources(current_resources, process):
@@ -93,9 +92,12 @@ def parallel_schedule(stock, processes):
             for ongoing_process in ongoing_processes:
                 if ongoing_process.end_time == time_elapsed:
                     produce_resources(stock.resources, ongoing_process)
-
                     print_produced_resources(ongoing_process)
                     ongoing_processes.remove(ongoing_process)
+                    logging.info(
+                        f"End: {ongoing_process.name}, "
+                        f"End Time: {ongoing_process.end_time}"
+                    )
 
         assign_priorities(
             ongoing_processes,
@@ -121,9 +123,9 @@ def parallel_schedule(stock, processes):
                 process.end_time = time_elapsed + process.delay
 
                 logging.info(
-                    f"Executed: {process.name}, "
+                    f"Start: {process.name}, "
                     f"Start Time: {process.start_time}, "
-                    f"End Time: {process.end_time}"
+                    f"Estimated End Time: {process.end_time}"
                 )
 
                 ongoing_processes.append(process)
@@ -178,6 +180,6 @@ if __name__ == "__main__":
         filename=file_name + ".log", level=logging.INFO, format="%(message)s"
     )
 
-    logging.info("Stock: %s", stock.resources)
-    logging.info("-------------------")
+    logging.info("Initial Stock: %s", stock.resources)
     parallel_schedule(stock, processes)
+    logging.info("Final Stock: %s", stock.resources)

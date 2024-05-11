@@ -7,155 +7,99 @@ def parse_log_file(file_path):
     with open(file_path, "r") as file:
         lines = file.readlines()
 
+    initial_stock = {}
+    final_stock = {}
     processes = []
-    stocks = []
-    current_process = {}
-    tasks = []
-    start_times = []
-    end_times = []
-    durations = []
+    processes_time = []
 
     for line in lines:
-        if line.startswith("process:"):
-            if current_process:
-                processes.append(current_process)
-            current_process = {"name": line.strip().split(": ")[1]}
-        elif line.startswith("Executed:"):
-            parts = line.strip().split(", ")
-            start_time = int(parts[1].split(": ")[1])
-            end_time = int(parts[2].split(": ")[1])
-            tasks.append(current_process.get("name"))
-            start_times.append(start_time)
-            end_times.append(end_time)
-            durations.append(end_time - start_time)
-        elif line.startswith("Consumed:"):
-            if current_process:
-                consumed = line.strip().split(": ")[1]
-                consumed_quantity = line.strip().split(": ")[2]
-                current_process["consumed"] = {
-                    "resource": consumed,
-                    "quantity": consumed_quantity,
-                }
-        elif line.startswith("Produced:"):
-            if current_process:
-                produced = line.strip().split(": ")[1]
-                produced_quantity = line.strip().split(": ")[2]
-                current_process["produced"] = {
-                    "resource": produced,
-                    "quantity": produced_quantity,
-                }
-        elif line.startswith("Stock:"):
-            stock_parts = line.strip().split("{")[1].split("}")[0].split(", ")
-            stock_dict = {}
+        line = line.strip()
+        if "Initial Stock:" in line:
+            stock_parts = line.split("{")[1].split("}")[0].split(", ")
             for part in stock_parts:
                 key, value = part.split(": ")
-                stock_dict[key.strip("'")] = int(value)
-            stocks.append(stock_dict)
-
-    if current_process:
-        processes.append(current_process)
-
-    return stocks, processes, tasks, start_times, end_times, durations
-
-
-def check_each_process(processes_log, processes):
-    for process_log in processes_log:
-        name = process_log["name"]
-        if processes:
-            exist = False
-            for process in processes:
-                if process.name == name:
-                    exist = True
-                    consumed_item = process_log["consumed"].get("resource")
-                    if consumed_item in process.needs:
-                        if process.needs[consumed_item] != int(
-                            process_log["consumed"].get("quantity")
-                        ):
-                            print(f"Process {name} consumed quantity is not correct")
-                            exit(1)
-                    else:
-                        print(
-                            f"Process {name} consumed item does not exist in the needs"
-                        )
-                        exit(1)
-                    produced_item = process_log["produced"].get("resource")
-                    if produced_item in process.results:
-                        if process.results[produced_item] != int(
-                            process_log["produced"].get("quantity")
-                        ):
-                            print(f"Process {name} produced quantity is not correct")
-                            exit(1)
-                    else:
-                        print(
-                            f"Process {name} produced item does not exist in the results"
-                        )
-                        exit(1)
-            if not exist:
-                print(f"Process {name} does not exist in the processes list")
-                exit(1)
+                initial_stock[key.strip().strip("'").strip('"')] = int(value)
+        elif "Final Stock:" in line:
+            stock_parts = line.split("{")[1].split("}")[0].split(", ")
+            for part in stock_parts:
+                key, value = part.split(": ")
+                final_stock[key.strip().strip("'").strip('"')] = int(value)
+        elif "Consumed by" in line:
+            process_name = line.split(")")[0].split("by ")[1]
+            resource, quantity = line.split(")")[1].split(": ")
+            processes.append(
+                {
+                    "name": process_name,
+                    "consumed": {resource.strip().strip("'").strip('"'): int(quantity)},
+                }
+            )
+        elif "Produced by" in line:
+            process_name = line.split(")")[0].split("by ")[1]
+            resource, quantity = line.split(")")[1].split(": ")
+            processes.append(
+                {
+                    "name": process_name,
+                    "produced": {resource.strip().strip("'").strip('"'): int(quantity)},
+                }
+            )
+        elif line.startswith("Start:"):
+            parts = line.split(", ")
+            if len(parts) == 3:
+                process_name = parts[0].split(": ")[1]
+                start_time = int(parts[1].split(": ")[1])
+                end_time = int(parts[2].split(": ")[1])
+                processes_time.append(
+                    {"name": process_name, "start_time": start_time, "end_time": end_time}
+                )
+            else:
+                print(f"Unexpected format in line: {line}")
 
 
-def check_each_stock(stocks_log, processes_log, processes):
-    current_stock = stocks_log[0]
-    for i in range(1, len(stocks_log)):
-        process_name = processes_log[i - 1].get("name")
-        for process in processes:
-
-            # 同一プロセスを実行
-            if process.name == process_name:
-                for item in process.needs:
-                    if item in current_stock:
-                        current_stock[item] -= int(process.needs[item])
-                for item in process.results:
-                    if item in current_stock:
-                        current_stock[item] += int(process.results[item])
-                    else:
-                        current_stock[item] = int(process.results[item])
-
-        # ログとの比較
-        if current_stock != stocks_log[i]:
-            print(f"Stocks are not correct at process {i}")
-            print(f"Estimated Stock: {current_stock}")
-            print(f"Stock Log      : {stocks_log[i]}")
-            exit(1)
+    return initial_stock, final_stock, processes, processes_time
 
 
-def plot_processes(tasks, start_times, durations):
-    # Create a figure and an axes.
-    fig, ax = plt.subplots()
+def verify_process_calculations(initial_stock, processes):
+    # Create a copy of the initial stock to modify it
+    simulated_stock = initial_stock.copy()
+    print("Simulated Stock:", simulated_stock)
 
-    colors = [
-        "tab:blue",
-        "tab:orange",
-        "tab:green",
-        "tab:red",
-        "tab:purple",
-        "tab:brown",
-        "tab:pink",
-        "tab:gray",
-        "tab:olive",
-        "tab:cyan",
-    ]
+    # Process each step
+    for process in processes:
+        if "consumed" in process:
+            for resource, quantity in process["consumed"].items():
+                if resource in simulated_stock:
+                    simulated_stock[resource] -= quantity
+                else:
+                    print(
+                        f"Error: Trying to consume a resource '{resource}' that doesn't exist."
+                    )
+                    return False
 
-    # Plot each task as a bar.
-    for i, task in enumerate(tasks):
-        color = colors[i % len(colors)]
-        ax.broken_barh(
-            [(start_times[i], durations[i])], (i - 0.4, 0.8), facecolors=color
-        )
+        if "produced" in process:
+            for resource, quantity in process["produced"].items():
+                if resource in simulated_stock:
+                    simulated_stock[resource] += quantity
+                else:
+                    simulated_stock[resource] = quantity
 
-    # Set labels and title
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Processes")
-    ax.set_title("Process Execution Timeline")
-    ax.set_yticks(range(len(tasks)))
-    ax.set_yticklabels(tasks)
+    # Check if the simulated final stock matches the actual final stock
+    for resource, quantity in final_stock.items():
+        if simulated_stock.get(resource, 0) != quantity:
+            print(
+                f"Mismatch in resource '{resource}': expected {quantity}, got {simulated_stock.get(resource, 0)}"
+            )
+            return False
 
-    # Show grid
-    ax.grid(True)
+    # Optionally, check for any extra resources in the simulated stock not in final stock
+    for resource in simulated_stock:
+        if resource not in final_stock:
+            print(
+                f"Extra resource '{resource}' in simulated stock not accounted for in final stock."
+            )
+            return False
 
-    # Show the plot
-    plt.show()
+    print("All processes verified successfully.")
+    return True
 
 
 if __name__ == "__main__":
@@ -167,15 +111,38 @@ if __name__ == "__main__":
         print("python3 krpsim_verify.py <file_name> <log_file>")
         sys.exit(1)
 
+    if file_name != log_file.replace(".log", ""):
+        print("It's not a log file. Please input a log file.")
+        sys.exit(1)
+
     # インプット用ファイルをパースする
     stock, processes, optimize = parse_krpsim_file(file_name)
-    # ログファイルをパースする
-    stocks_log, processes_log, tasks, start_times, end_times, durations = (
-        parse_log_file(log_file)
-    )
-    # プロセス内容をチェックする
-    check_each_process(processes_log, processes)
-    # ストック内容をチェックする
-    check_each_stock(stocks_log, processes_log, processes)
-    # プロセスの実行時間をプロットする
-    plot_processes(tasks, start_times, durations)
+
+    try:
+        # ログファイルをパースする
+        initial_stock, final_stock, processes, processes_time = parse_log_file(log_file)
+        print("Initial Stock:", initial_stock)
+        print("Final Stock:", final_stock)
+        print("Processes:")
+        for process in processes:
+            print(process)
+
+        # プロセスの計算を検証する
+        if verify_process_calculations(initial_stock, processes):
+            print("Verification successful.")
+        else:
+            print("Verification failed.")
+
+        # グラフを描画する
+        fig, ax = plt.subplots(figsize=(10, 8))
+        ax.set_title("Processes Time")
+        ax.set_xlabel("Time")
+        ax.set_ylabel("Processes")
+        for process in processes_time:
+            ax.barh(process["name"], process["end_time"] - process["start_time"], left=process["start_time"])
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(e)
+        sys.exit(1)
