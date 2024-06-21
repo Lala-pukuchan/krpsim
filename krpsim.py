@@ -111,7 +111,7 @@ def parallel_schedule(stock, processes, max_time):
                         f"End Time: {ongoing_process.end_time}"
                     )
 
-        if time_elapsed >= max_time:
+        if time_elapsed > max_time:
             logging.info(f"Maximum time {max_time} reached, stopping execution.")
             print("Maximum time reached, stopping execution.")
             break

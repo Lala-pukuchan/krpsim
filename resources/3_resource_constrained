@@ -1,0 +1,21 @@
+#
+# resource constrained process demo - krpsim
+# リソース制約を持つケース
+# stock      name:quantity
+vegetables:15
+eggs:5
+#
+# process   name:(need1:qty1;need2:qty2;[...]):(result1:qty1;result2:qty2;[...]):delay
+#
+chop_vegetables:(vegetables:5):(chopped_vegetables:5):10
+make_omelette:(chopped_vegetables:5;eggs:2):(omelette:5):20
+make_salad:(chopped_vegetables:5):(salad:5):15
+serve_omelette:(omelette:5):(served_omelette:5):5
+serve_salad:(salad:5):(served_salad:5):5
+get_review_omelette:(served_omelette:5):(review:5):2
+get_review_salad:(served_salad:5):(review:5):2
+#
+# optimize for time and reviews
+# optimize:(time;review)
+#
+optimize:(time;review)

@@ -1,0 +1,19 @@
+#
+# cyclic process demo - krpsim
+# リサイクルを行うケース
+# stock      name:quantity
+vegetables:25
+#
+# process   name:(need1:qty1;need2:qty2;[...]):(result1:qty1;result2:qty2;[...]):delay
+#
+chop_vegetables:(vegetables:5):(chopped_vegetables:5):10
+make_soup_base:(chopped_vegetables:5):(soup_base:5):15
+add_spices:(soup_base:5):(spiced_soup:5):5
+serve_soup:(spiced_soup:5):(served_soup:5):5
+reuse_soup_base:(served_soup:1):(soup_base:1):2
+get_review:(served_soup:4):(review:5):2
+#
+# optimize for time and reviews
+# optimize:(time;review)
+#
+optimize:(time;review)

@@ -1,19 +1,19 @@
 #
 # bakery packaging demo - krpsim
-#
+# ikeaテストファイルを複雑化したケース
 # stock      name:quantity
-flour:10000
+flour:100000
 sugar:5000
-yeast:1000
-butter:2000
-milk:3000
+yeast:1500
+butter:5000
+milk:6000
 eggs:1000
-oil:2000
+oil:8000
 #
 # process   name:(need1:qty1;need2:qty2;[...]):(result1:qty1;result2:qty2;[...]):delay
 #
 # Kneading processes
-knead_dough:(flour:10;yeast:1;milk:5;butter:2;sugar:2):(dough:10):30
+knead_dough:(flour:10;yeast:1;milk:5;butter:2;sugar:2):(dough:5):30
 
 # Shaping and secondary fermentation processes
 shape_bread:(dough:10):(shaped_dough:10):20
@@ -21,8 +21,8 @@ shape_buns:(dough:10;eggs:2):(shaped_buns:10):20
 shape_donuts:(dough:10;eggs:2;sugar:2):(shaped_donuts:10):20
 
 # Baking and frying processes
-bake_bread:(shaped_dough:10):(bread:10):40
-bake_buns:(shaped_buns:10):(buns:10):40
+bake_bread:(shaped_dough:30):(bread:10):40
+bake_buns:(shaped_buns:20):(buns:10):100
 fry_donuts:(shaped_donuts:5;oil:10):(donuts:5):15
 
 # Packaging process
