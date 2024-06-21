@@ -2,7 +2,7 @@ from parse_krpsim_file import parse_krpsim_file
 import sys
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
-
+from termcolor import colored
 
 def parse_log_file(file_path):
     with open(file_path, "r") as file:
@@ -15,6 +15,8 @@ def parse_log_file(file_path):
 
     for line in lines:
         line = line.strip()
+        if not line or line == "==================":
+            continue
         if "Initial Stock:" in line:
             stock_parts = line.split("{")[1].split("}")[0].split(", ")
             for part in stock_parts:
@@ -53,13 +55,11 @@ def parse_log_file(file_path):
                     {"name": process_name, "start_time": start_time, "end_time": end_time}
                 )
             else:
-                print(f"Unexpected format in line: {line}")
-
+                print(colored(f"Unexpected format in line: {line}", "red"))
 
     return initial_stock, final_stock, processes, processes_time
 
-
-def verify_process_calculations(initial_stock, processes):
+def verify_process_calculations(initial_stock, final_stock, processes):
     # Create a copy of the initial stock to modify it
     simulated_stock = initial_stock.copy()
     print("Simulated Stock:", simulated_stock)
@@ -69,11 +69,13 @@ def verify_process_calculations(initial_stock, processes):
         if "consumed" in process:
             for resource, quantity in process["consumed"].items():
                 if resource in simulated_stock:
+                    if simulated_stock[resource] < quantity:
+                        print(colored(f"Error: Not enough '{resource}' in stock to consume for process '{process['name']}'.", "red"))
+                        print(colored(f"Stock available: {simulated_stock[resource]}, required: {quantity}", "cyan"))
+                        return False
                     simulated_stock[resource] -= quantity
                 else:
-                    print(
-                        f"Error: Trying to consume a resource '{resource}' that doesn't exist."
-                    )
+                    print(colored(f"Error: Trying to consume a resource '{resource}' that doesn't exist.", "red"))
                     return False
 
         if "produced" in process:
@@ -86,22 +88,17 @@ def verify_process_calculations(initial_stock, processes):
     # Check if the simulated final stock matches the actual final stock
     for resource, quantity in final_stock.items():
         if simulated_stock.get(resource, 0) != quantity:
-            print(
-                f"Mismatch in resource '{resource}': expected {quantity}, got {simulated_stock.get(resource, 0)}"
-            )
+            print(colored(f"Mismatch in resource '{resource}': expected {quantity}, got {simulated_stock.get(resource, 0)}", "red"))
             return False
 
     # Optionally, check for any extra resources in the simulated stock not in final stock
     for resource in simulated_stock:
         if resource not in final_stock:
-            print(
-                f"Extra resource '{resource}' in simulated stock not accounted for in final stock."
-            )
+            print(colored(f"Extra resource '{resource}' in simulated stock not accounted for in final stock.", "red"))
             return False
 
     print("All processes verified successfully.")
     return True
-
 
 if __name__ == "__main__":
 
@@ -129,43 +126,43 @@ if __name__ == "__main__":
             print(process)
 
         # プロセスの計算を検証する
-        if verify_process_calculations(initial_stock, processes):
+        if verify_process_calculations(initial_stock, final_stock, processes):
             print("Verification successful.")
+            # グラフを描画する
+            fig, ax = plt.subplots(figsize=(10, 8))
+            ax.set_title("Processes Time")
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Processes")
+
+            # Generate a color map from a set of colors
+            colors = list(mcolors.TABLEAU_COLORS)
+            color_map = {}
+            process_count = {}
+            unique_process_index = 0
+
+            for process in processes_time:
+                base_name = process["name"]
+                if base_name not in color_map:
+                    # Assign a color to each unique process name
+                    color_map[base_name] = colors[unique_process_index % len(colors)]
+                    unique_process_index += 1
+
+                # Count occurrences to make each bar unique
+                if base_name in process_count:
+                    process_count[base_name] += 1
+                else:
+                    process_count[base_name] = 1
+
+                unique_name = f"{base_name} ({process_count[base_name]})"
+                # Use the mapped color for the process
+                ax.barh(unique_name, process["end_time"] - process["start_time"], left=process["start_time"], color=color_map[base_name])
+
+            plt.tight_layout()
+            plt.show()
+
         else:
-            print("Verification failed.")
-
-        # グラフを描画する
-        fig, ax = plt.subplots(figsize=(10, 8))
-        ax.set_title("Processes Time")
-        ax.set_xlabel("Time")
-        ax.set_ylabel("Processes")
-
-        # Generate a color map from a set of colors
-        colors = list(mcolors.TABLEAU_COLORS)
-        color_map = {}
-        process_count = {}
-        unique_process_index = 0
-
-        for process in processes_time:
-            base_name = process["name"]
-            if base_name not in color_map:
-                # Assign a color to each unique process name
-                color_map[base_name] = colors[unique_process_index % len(colors)]
-                unique_process_index += 1
-
-            # Count occurrences to make each bar unique
-            if base_name in process_count:
-                process_count[base_name] += 1
-            else:
-                process_count[base_name] = 1
-
-            unique_name = f"{base_name} ({process_count[base_name]})"
-            # Use the mapped color for the process
-            ax.barh(unique_name, process["end_time"] - process["start_time"], left=process["start_time"], color=color_map[base_name])
-
-        plt.tight_layout()
-        plt.show()
+            print(colored("Verification failed.", "red"))
 
     except Exception as e:
-        print(e)
+        print(colored(f"Error occurred: {e}", "red"))
         sys.exit(1)
