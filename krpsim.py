@@ -204,6 +204,10 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error parsing file '{file_name}': {e}")
         sys.exit(1)
+    
+    if optimize is None:
+        print("Optimization goals are not properly defined.")
+        sys.exit(1)
 
     # 最終成果物が指定されている場合、優先度を割り当て、優先度の高い順にプロセスをソートする
     if optimize.final_product:
